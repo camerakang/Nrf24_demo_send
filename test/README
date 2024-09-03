@@ -1,0 +1,98 @@
+
+This directory is intended for PlatformIO Test Runner and project tests.
+
+Unit Testing is a software testing method by which individual units of
+source code, sets of one or more MCU program modules together with associated
+control data, usage procedures, and operating procedures, are tested to
+determine whether they are fit for use. Unit testing finds problems early
+in the development cycle.
+
+More information about PlatformIO Unit Testing:
+- https://docs.platformio.org/en/latest/advanced/unit-testing/index.html
+#include <SPI.h>
+#include "printf.h"
+#include "RF24.h"
+
+// nRF24L01引脚配置
+#define CE_PIN 2
+#define CSN_PIN 3
+RF24 radio(CE_PIN, CSN_PIN);
+
+// 发送地址
+uint8_t address[][6] = {"1Node", "2Node"};
+
+struct PayloadStruct
+{
+  char message[12]; // 传输的消息
+  uint16_t counter; // 计数器
+};
+PayloadStruct payload;
+
+void setup()
+{
+  Serial.begin(115200);
+  while (!Serial)
+  {
+    // 等待串口准备就绪
+  }
+
+  if (!radio.begin())
+  {
+    Serial.println(F("radio hardware is not responding!!"));
+    while (1)
+    {
+    } // 进入无限循环
+  }
+
+  radio.setDataRate(RF24_1MBPS);
+  radio.setPALevel(RF24_PA_HIGH);
+  radio.enableDynamicPayloads();
+  radio.enableAckPayload();
+  radio.openWritingPipe(address[1]);    // 设置发送地址
+  radio.openReadingPipe(1, address[0]); // 设置接收地址 (用于ACK)
+  radio.stopListening();                // 设置为发送模式
+
+  payload.counter = 0;                     // 初始化计数器
+  memcpy(payload.message, "TX Hello ", 8); // 设置发送消息
+}
+
+void loop()
+{
+  unsigned long start_timer = micros();                 // 开始计时
+  bool report = radio.write(&payload, sizeof(payload)); // 发送数据并保存结果
+  unsigned long end_timer = micros();                   // 结束计时
+
+  if (report)
+  {
+    Serial.print(F("Transmission successful! Time to transmit = "));
+    Serial.print(end_timer - start_timer); // 打印传输时间
+    Serial.print(F(" us. Sent: "));
+    Serial.print(payload.message);   // 打印发送的消息
+    Serial.println(payload.counter); // 打印发送的计数器
+    payload.counter++;
+    uint8_t pipe;
+    if (radio.available(&pipe))
+    { // 检查是否有ACK负载
+      PayloadStruct received;
+      radio.read(&received, sizeof(received)); // 读取ACK负载
+      Serial.print(F(" Received "));
+      Serial.print(radio.getDynamicPayloadSize()); // 打印ACK负载大小
+      Serial.print(F(" bytes on pipe "));
+      Serial.print(pipe); // 打印接收的管道编号
+      Serial.print(F(": "));
+      Serial.print(received.message);   // 打印收到的消息
+      Serial.println(received.counter); // 打印收到的计数器
+    }
+    else
+    {
+      Serial.println(F(" Received: an empty ACK packet")); // 收到空ACK包
+      // payload.counter++;                                   // 如果没有收到ACK负载，也递增计数器
+    }
+  }
+  else
+  {
+    Serial.println(F("Transmission failed or timed out")); // 传输失败
+  }
+
+  // delay(1000); // 为了使串行监视器的输出更易读，每秒传输一次
+}
