@@ -2,6 +2,7 @@
 #define __NRF24_DEVICE__
 #include <SPI.h>
 #include "RF24.h"
+
 #define MAX_BUFFER_SIZE 256 // 定义一个最大缓冲区大小
 
 // nRF24L01引脚配置
@@ -30,7 +31,7 @@ struct ReceivedData
 };
 extern PayloadStruct payload;
 extern PayloadStruct ackPayload;
+void rf24_init();
 PayloadStruct sendAndReceive(const uint8_t *dataToSend, int dataLength);
 ReceivedData handleRadioReceive(PayloadStruct *ackPayload, uint8_t ackSize);
-
 #endif // !__NR24_DEVICE__

@@ -1,10 +1,47 @@
 #include "NRF24_device.h"
+#include "printf.h"
 
 PayloadStruct payload;
 PayloadStruct ackPayload;
 
 RF24 radio(CE_PIN, CSN_PIN);
+#define MAX_BUFFER_SIZE 256 // 定义一个最大缓冲区大小
 
+// 发送地址
+uint8_t address[][6] = {"1Node", "2Node"};
+uint8_t buffer[32] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12};
+
+void rf24_init()
+{
+    if (!radio.begin())
+    {
+        Serial.println(F("radio hardware is not responding!!"));
+        while (1)
+        {
+        } // 进入无限循环
+    }
+    radio.setCRCLength(RF24_CRC_8);
+    radio.setDataRate(RF24_1MBPS);
+    radio.setRetries(2, 5);
+    radio.setPALevel(RF24_PA_HIGH);
+    radio.enableDynamicPayloads();
+    radio.enableAckPayload();
+    radio.openWritingPipe(address[1]);    // 设置发送地址
+    radio.openReadingPipe(1, address[3]); // 设置接收地址 (用于ACK)
+    radio.stopListening();                // 设置为发送模式
+    radio.printDetails();
+    radio.setChannel(100);
+    payload.counter = 0; // 初始化计数器
+
+    printf_begin();
+    // Serial.print(F("CRC Rate: "));
+    // Serial.println(radio.getCRCLength());
+    // Serial.print(F("PAL Rate: "));
+    // Serial.println(radio.getPALevel());
+    // // getARC
+    // Serial.print(F("ARC: "));
+    // Serial.println(radio.getARC());
+}
 /**
  * 发送数据并接收PAYLOAD ACK响应
  * 该函数负责通过无线通信模块发送数据，并接收返回的数据
