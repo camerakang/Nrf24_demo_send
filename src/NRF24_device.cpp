@@ -29,11 +29,10 @@ void rf24_init()
     radio.openWritingPipe(address[1]);    // 设置发送地址
     radio.openReadingPipe(1, address[3]); // 设置接收地址 (用于ACK)
     radio.stopListening();                // 设置为发送模式
-    radio.printDetails();
     radio.setChannel(100);
     payload.counter = 0; // 初始化计数器
+    radio.printDetails();
 
-    printf_begin();
     // Serial.print(F("CRC Rate: "));
     // Serial.println(radio.getCRCLength());
     // Serial.print(F("PAL Rate: "));
@@ -51,6 +50,11 @@ void rf24_init()
  * @return 返回接收到的数据结构
  *
  * 注意: 该函数假设有适当的初始化和错误处理机制存在于调用该函数的上下文中
+ * 调用示例
+ *  uint8_t dataToSend[] = {0xAA, 0xBB, 0xCC, 0xDD, 0xEE};
+    dataToSend[2] = payload.counter++;
+    PayloadStruct received = sendAndReceive(dataToSend, sizeof(dataToSend));
+
  */
 PayloadStruct sendAndReceive(const uint8_t *dataToSend, int dataLength)
 {
@@ -75,6 +79,11 @@ PayloadStruct sendAndReceive(const uint8_t *dataToSend, int dataLength)
     Serial.print(F("Sent "));
     Serial.print(dataLength);
     Serial.print(F(" bytes"));
+    for (size_t i = 0; i < dataLength; i++)
+    {
+        Serial.print(dataToSend[i], HEX);
+        Serial.print(F(" "));
+    }
 
     // 检查是否有返回数据
     uint8_t pipe;
@@ -83,6 +92,7 @@ PayloadStruct sendAndReceive(const uint8_t *dataToSend, int dataLength)
         uint8_t bytes = radio.getDynamicPayloadSize();
         if (bytes == sizeof(receivedData))
         {
+
             radio.read(&receivedData, sizeof(receivedData));
             Serial.print(F("Received "));
             Serial.print(bytes);
@@ -114,6 +124,10 @@ unsigned long start_timer = 0;
  * @param uint8_t ackSize 确认回复数据的大小
  *
  * @return 返回一个ReceivedData结构体，其中包含接收到的数据、接收管道、数据大小和接收间隔
+ * 调用示例
+ * memcpy(&ackPayload, "payload ack", sizeof("payload ack"));
+  // 调用函数
+  ReceivedData receivedData = handleRadioReceive(&ackPayload, sizeof(ackPayload));
  */
 ReceivedData handleRadioReceive(PayloadStruct *ackPayload, uint8_t ackSize)
 {
@@ -166,4 +180,104 @@ ReceivedData handleRadioReceive(PayloadStruct *ackPayload, uint8_t ackSize)
     }
 
     return result; // 返回接收结果结构体
+}
+
+/**
+ * 发送数据并等待接收响应
+ *
+ * @param dataToSend 要发送的数据指针
+ * @param sendSize 要发送的数据大小
+ * @param received 用于存储接收到的数据的缓冲区
+ * @param maxReceiveSize 接收缓冲区的最大大小
+ * @return 实际接收到的数据大小，如果发送失败或没有接收到数据则返回0
+ */
+int sendAndReceive(const uint8_t *dataToSend, uint8_t sendSize, uint8_t *received, uint8_t maxReceiveSize)
+{
+    radio.stopListening();
+
+    bool report = radio.write(dataToSend, sendSize);
+    if (report)
+    {
+        radio.startListening();
+        unsigned long start_timeout = millis();
+        while (!radio.available())
+        {
+            if (millis() - start_timeout > 200)
+            { // 200ms超时
+                radio.stopListening();
+                return 0; // 超时，没有接收到数据
+            }
+        }
+
+        radio.stopListening();
+        if (radio.available())
+        {
+            uint8_t bytesReceived = radio.getDynamicPayloadSize();
+            if (bytesReceived > maxReceiveSize)
+            {
+                bytesReceived = maxReceiveSize;
+            }
+            radio.read(received, bytesReceived);
+
+            Serial.print("Received after send: ");
+            for (int i = 0; i < bytesReceived; i++)
+            {
+                Serial.print(received[i], HEX);
+                Serial.print(" ");
+            }
+            Serial.println();
+
+            return bytesReceived;
+        }
+    }
+
+    return 0; // 发送失败或没有接收到数据
+}
+
+#define MAX_BUFFER_SIZE 32 // 假设最大缓冲区大小为32字节，您可以根据需要调整
+
+bool receiveAndRespondData(uint8_t *buffer, uint8_t &length, uint32_t timeout = 150)
+{
+    radio.startListening();
+
+    unsigned long startTime = millis();
+    bool dataReceived = false;
+
+    while (millis() - startTime < timeout)
+    {
+        if (radio.available())
+        {
+            length = radio.getDynamicPayloadSize();
+            if (length > MAX_BUFFER_SIZE)
+            {
+                length = MAX_BUFFER_SIZE;
+            }
+            radio.read(buffer, length);
+            dataReceived = true;
+            break;
+        }
+    }
+
+    if (dataReceived)
+    {
+        Serial.print("TX Received from RX ");
+        Serial.print(length);
+        Serial.print(" bytes: ");
+        for (int i = 0; i < length; i++)
+        {
+            Serial.print("0x");
+            Serial.print(buffer[i], HEX);
+            Serial.print(" ");
+        }
+        Serial.println();
+
+        radio.stopListening();
+        bool sent = radio.writeFast(buffer, length);
+        bool success = radio.txStandBy(timeout);
+        radio.startListening();
+
+        return sent && success;
+    }
+
+    return false;
 }
