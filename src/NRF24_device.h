@@ -34,4 +34,5 @@ extern PayloadStruct ackPayload;
 void rf24_init();
 PayloadStruct sendAndReceive(const uint8_t *dataToSend, int dataLength);
 ReceivedData handleRadioReceive(PayloadStruct *ackPayload, uint8_t ackSize);
+PayloadStruct sendAndReceive_repeat(const uint8_t *dataToSend, int dataLength, uint8_t *send_times);
 #endif // !__NR24_DEVICE__

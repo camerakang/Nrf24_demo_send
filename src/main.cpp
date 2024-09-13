@@ -1,7 +1,7 @@
 #include <SPI.h>
 #include "RF24.h"
 #include "NRF24_device.h"
-
+bool send_flag = false;
 void TaskReadSerial(void *pvParameters);
 void TaskSendToRec(void *pvParameters);
 void setup()
@@ -15,14 +15,14 @@ void setup()
   rf24_init();
 
   // 创建读取串口数据任务
-  // xTaskCreate(
-  //     TaskReadSerial, // 任务函数
-  //     "ReadSerial",   // 任务名称
-  //     2048,           // 堆栈大小（字节）
-  //     NULL,           // 任务参数
-  //     1,              // 任务优先级
-  //     NULL            // 任务句柄
-  // );
+  xTaskCreate(
+      TaskReadSerial, // 任务函数
+      "ReadSerial",   // 任务名称
+      2048,           // 堆栈大小（字节）
+      NULL,           // 任务参数
+      1,              // 任务优先级
+      NULL            // 任务句柄
+  );
   // xTaskCreate(
   //     TaskSendToRec, // 任务函数
   //     "SendToRec",   // 任务名称
@@ -32,31 +32,45 @@ void setup()
   //     NULL           // 任务句柄
   // );
 }
-  uint8_t dataToSend[] = {0xAA, 0xBB, 0xCC, 0xDD, 0xEE};
-
+uint8_t dataToSend[] = {0xAA, 0xBB, 0x0a, 0xDD, 0xEE};
+extern uint8_t send_times;
 void loop()
 {
-  Serial.print(" "); 
-  Serial.print(dataToSend[2] );
-  Serial.print(" ");  
-  PayloadStruct received = sendAndReceive(dataToSend, sizeof(dataToSend));
-  vTaskDelay(pdMS_TO_TICKS(50)); // 短暂延迟，避免过度占用CPU
-  received = sendAndReceive(dataToSend, sizeof(dataToSend));
-  dataToSend[2] = payload.counter++;
+  if (send_flag)
+  {
 
-  delay(1000); // 为了使串行监视器的输出更易读，每秒传输一次
+    PayloadStruct received = sendAndReceive(dataToSend, sizeof(dataToSend));
+    if (strlen(received.message) > 0)
+    {
+      // Serial.print(F("Received "));
+
+      // Serial.print(received.message[2]);
+      // Serial.print(" ");
+      // Serial.println(received.counter);
+      if (send_times > 5)
+      {
+        dataToSend[2]++;
+        send_times = 0;
+        send_flag = false;
+      }
+    }
+  }
+
+  delay(10); // 为了使串行监视器的输出更易读，每秒传输一次
 }
 
 void TaskReadSerial(void *pvParameters)
 {
   while (1)
   {
-    uint8_t dataToSend[] = {0xAA, 0xBB, 0xCC, 0xDD, 0xEE};
-    PayloadStruct received = sendAndReceive(dataToSend, sizeof(dataToSend));
 
-    if (received.counter > 0)
+    if (Serial.available() > 0)
     {
-      dataToSend[2] = payload.counter++;
+      char receivedChar = Serial.read();
+      if (receivedChar == 'a')
+      {
+        send_flag = true;
+      }
     }
     // 7ms是极限 低于7ms会出现无法接收ACK的问题
     vTaskDelay(pdMS_TO_TICKS(7)); // 短暂延迟，避免过度占用CPU

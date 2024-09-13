@@ -28,7 +28,9 @@ void rf24_init()
     radio.enableAckPayload();
     radio.openWritingPipe(address[1]);    // 设置发送地址
     radio.openReadingPipe(1, address[3]); // 设置接收地址 (用于ACK)
-    radio.stopListening();                // 设置为发送模式
+    radio.flush_tx();                     // 清空TX FIFO
+
+    radio.stopListening(); // 设置为发送模式
     radio.setChannel(100);
     payload.counter = 0; // 初始化计数器
     radio.printDetails();
@@ -56,7 +58,64 @@ void rf24_init()
     PayloadStruct received = sendAndReceive(dataToSend, sizeof(dataToSend));
 
  */
+     uint8_t send_times=0;
+
 PayloadStruct sendAndReceive(const uint8_t *dataToSend, int dataLength)
+{
+    PayloadStruct receivedData = {"", 0};
+
+    if (dataLength <= 0 || dataLength > MAX_BUFFER_SIZE)
+    {
+        Serial.println(F("Invalid data length"));
+        return receivedData;
+    }
+    if (!radio.writeFast(dataToSend, dataLength, true)) // 使用 writeFast 并启用自动重试
+    {
+        if (!radio.txStandBy(10)) // 等待最多100ms
+        {
+            Serial.println(F("Transmission failed"));
+            return receivedData;
+        }
+    }
+    // 数据发送成功
+    Serial.print(F("Sent :"));
+    // Serial.print(dataLength);
+    // Serial.print(F(" bytes"));
+    // for (size_t i = 0; i < dataLength; i++)
+    // {
+    Serial.print(dataToSend[2]);
+    //     Serial.print(F(" "));
+    // }
+    send_times++;
+    // 检查是否有返回数据
+    uint8_t pipe;
+    if (radio.available(&pipe))
+    {
+        uint8_t bytes = radio.getDynamicPayloadSize();
+        if (bytes == sizeof(receivedData))
+        {
+
+            radio.read(&receivedData, sizeof(receivedData));
+            Serial.print(F("  Received "));
+            Serial.print(receivedData.message);
+            Serial.println(receivedData.counter);
+            radio.flush_rx();
+        }
+        else
+        {
+            Serial.println(F("Received data size mismatch"));
+            radio.flush_rx(); // 清空接收缓冲区
+        }
+    }
+    else
+    {
+        Serial.println(F("No response received"));
+    }
+
+    return receivedData;
+}
+
+PayloadStruct sendAndReceive_twice(const uint8_t *dataToSend, int dataLength)
 {
     PayloadStruct receivedData = {"", 0};
 
@@ -76,14 +135,14 @@ PayloadStruct sendAndReceive(const uint8_t *dataToSend, int dataLength)
     }
 
     // 数据发送成功
-    Serial.print(F("Sent "));
-    Serial.print(dataLength);
-    Serial.print(F(" bytes"));
-    for (size_t i = 0; i < dataLength; i++)
-    {
-        Serial.print(dataToSend[i], HEX);
-        Serial.print(F(" "));
-    }
+    // Serial.print(F("Sent "));
+    // Serial.print(dataLength);
+    // Serial.print(F(" bytes"));
+    // for (size_t i = 0; i < dataLength; i++)
+    // {
+    //     Serial.print(dataToSend[i], HEX);
+    //     Serial.print(F(" "));
+    // }
 
     // 检查是否有返回数据
     uint8_t pipe;
@@ -94,16 +153,16 @@ PayloadStruct sendAndReceive(const uint8_t *dataToSend, int dataLength)
         {
 
             radio.read(&receivedData, sizeof(receivedData));
-            Serial.print(F("Received "));
-            Serial.print(bytes);
-            Serial.print(F(" bytes  "));
-            Serial.print(receivedData.message);
-            Serial.println(receivedData.counter);
+            // Serial.print(F("Received "));
+            // Serial.print(bytes);
+            // Serial.print(F(" bytes  "));
+            // Serial.print(receivedData.message);
+            // Serial.println(receivedData.counter);
         }
         else
         {
             Serial.println(F("Received data size mismatch"));
-            radio.flush_rx(); // 清空接收缓冲区
+            radio.flush_rx(); // 清空 接收缓冲区
         }
     }
     else
@@ -113,7 +172,6 @@ PayloadStruct sendAndReceive(const uint8_t *dataToSend, int dataLength)
 
     return receivedData;
 }
-
 unsigned long start_timer = 0;
 /**
  * 处理无线电接收功能的函数
