@@ -3,6 +3,7 @@
 
 PayloadStruct payload;
 PayloadStruct ackPayload;
+SPIClass rf24_spi(HSPI);
 
 RF24 radio(CE_PIN, CSN_PIN);
 #define MAX_BUFFER_SIZE 256 // 定义一个最大缓冲区大小
@@ -13,7 +14,8 @@ uint8_t buffer[32] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A
 
 void rf24_init()
 {
-    if (!radio.begin())
+    rf24_spi.begin(SCK_PIN, MISO_PIN, MOSI_PIN, CSN_PIN);
+    if (!radio.begin(&rf24_spi, CE_PIN, CSN_PIN))
     {
         Serial.println(F("radio hardware is not responding!!"));
         while (1)
@@ -58,7 +60,7 @@ void rf24_init()
     PayloadStruct received = sendAndReceive(dataToSend, sizeof(dataToSend));
 
  */
-     uint8_t send_times=0;
+uint8_t send_times = 0;
 
 PayloadStruct sendAndReceive(const uint8_t *dataToSend, int dataLength)
 {

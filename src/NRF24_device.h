@@ -6,7 +6,6 @@
 #define MAX_BUFFER_SIZE 256 // 定义一个最大缓冲区大小
 
 // nRF24L01引脚配置
-#define SS_PIN 3
 #define MOSI_PIN 5
 #define MISO_PIN 6
 #define SCK_PIN 4
