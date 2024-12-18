@@ -2,36 +2,18 @@
 #define __NRF24_DEVICE__
 #include <SPI.h>
 #include "RF24.h"
-
-#define MAX_BUFFER_SIZE 256 // 定义一个最大缓冲区大小
-
-// nRF24L01引脚配置
 #define MOSI_PIN 5
 #define MISO_PIN 6
 #define SCK_PIN 4
-
 #define CE_PIN 2
 #define CSN_PIN 3
+
 extern RF24 radio;
-struct PayloadStruct
-{
-  char message[12]; // 传输的消息
-  uint32_t counter; // 计数器
-};
-
-#define MAX_PAYLOAD_SIZE 32
-
-struct ReceivedData
-{
-  uint8_t pipe;
-  uint8_t size;
-  uint8_t data[MAX_PAYLOAD_SIZE];
-  unsigned long interval;
-};
-extern PayloadStruct payload;
-extern PayloadStruct ackPayload;
-void rf24_init();
-PayloadStruct sendAndReceive(const uint8_t *dataToSend, int dataLength);
-ReceivedData handleRadioReceive(PayloadStruct *ackPayload, uint8_t ackSize);
-PayloadStruct sendAndReceive_repeat(const uint8_t *dataToSend, int dataLength, uint8_t *send_times);
+extern uint8_t recv_buffer[32];
+extern uint8_t send_buffer[32];
+void rf24_init_send();
+void rf24_init_recv();
+size_t rf24_send(uint8_t *send_buffer, int send_len, uint8_t *recv_buffer);
+void rf24_send_only(uint8_t *send_buffer, int send_len);
+size_t rf24_recv(uint8_t *recv_buffer, uint8_t *send_buffer, uint8_t send_len);
 #endif // !__NR24_DEVICE__

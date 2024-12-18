@@ -1,0 +1,3 @@
+[submodule "lib/simple_protocol"]
+	path = lib/simple_protocol
+	url = https://gitee.com/lyworkspace/simple_protocol.git
