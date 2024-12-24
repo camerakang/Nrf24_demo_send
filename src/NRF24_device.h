@@ -11,9 +11,11 @@
 extern RF24 radio;
 extern uint8_t recv_buffer[32];
 extern uint8_t send_buffer[32];
+extern uint8_t send_address[][6];
 void rf24_init_send();
 void rf24_init_recv();
 size_t rf24_send(uint8_t *send_buffer, int send_len, uint8_t *recv_buffer);
 void rf24_send_only(uint8_t *send_buffer, int send_len);
 size_t rf24_recv(uint8_t *recv_buffer, uint8_t *send_buffer, uint8_t send_len);
+void change_address_send(uint8_t *address, uint8_t *send_buffer, int send_len, uint8_t *recv_buffer);
 #endif // !__NR24_DEVICE__

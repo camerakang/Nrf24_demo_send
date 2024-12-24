@@ -41,16 +41,12 @@ void loop()
     auto frame{sprotocol_send->make_packer(1, 32)};
     frame.push_back(send_buffer, send_len).end_pack();
 
-    auto recv_len = rf24_send(frame().data(), frame().size(), recv_buffer);
-    if (recv_len > 0)
-    {
-      // Serial.print(F("Received "));
-      // for (int i = 0; i < recv_len; i++)
-      // {
-      //   Serial.print(dataToSend[i], HEX);
-      //   Serial.print(" ");
-      // }
-    }
+    // auto recv_len = rf24_send(frame().data(), frame().size(), recv_buffer);
+    change_address_send(send_address[0], frame().data(), frame().size(), recv_buffer);
+    change_address_send(send_address[1], frame().data(), frame().size(), recv_buffer);
+    change_address_send(send_address[2], frame().data(), frame().size(), recv_buffer);
+    change_address_send(send_address[3], frame().data(), frame().size(), recv_buffer);
+    delay(100);
   }
 
   delay(1); // 为了使串行监视器的输出更易读，每秒传输一次

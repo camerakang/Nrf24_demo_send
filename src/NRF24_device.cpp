@@ -10,6 +10,7 @@ SPIClass rf24_spi(HSPI);
 // an identifying device destination
 // Let these addresses be used for the pair
 uint8_t address[][6] = {"1Node", "2Node"};
+uint8_t send_address[][6] = {"3Node", "4Node", "5Node", "6Node"};
 
 void rf24_init_send()
 {
@@ -38,15 +39,15 @@ void rf24_init_send()
     radio.enableAckPayload();
 
     // set the TX address of the RX node into the TX pipe
-    radio.openWritingPipe(address[0]); // always uses pipe 0
+    radio.openWritingPipe(send_address[1]); // always uses pipe 0
 
     // set the RX address of the TX node into a RX pipe
-    radio.openReadingPipe(1, address[1]); // using pipe 1
+    radio.openReadingPipe(1, address[0]); // using pipe 1
 
     radio.stopListening(); // this also discards any unused ACK payloads
     // For debugging info
     // printf_begin(); // needed only once for printing details
-    // radio.printDetails();       // (smaller) function that prints raw register values
+    radio.printDetails(); // (smaller) function that prints raw register values
     // radio.printPrettyDetails(); // (larger) function that prints human readable data
 }
 void rf24_init_recv()
@@ -105,27 +106,11 @@ size_t rf24_send(uint8_t *send_buffer, int send_len, uint8_t *recv_buffer)
 
     if (report)
     {
-        // Serial.print(F("Transmission successful! ")); // payload was delivered
-        // Serial.print(F("Time to transmit = "));
-        // Serial.print(end_timer - start_timer); // print the timer result
-        // Serial.print(F(" us. Sent: "));
-
         uint8_t pipe;
         if (radio.available(&pipe))
         { // is there an ACK payload? grab the pipe number that received it
             size_t bytes = radio.getDynamicPayloadSize();
             radio.read(recv_buffer, bytes); // get incoming ACK payload
-            // Serial.print(F(" Received "));
-            // Serial.print(bytes); // print incoming payload size
-            // Serial.print(F(" bytes on pipe "));
-            // Serial.print(pipe); // print pipe number that received the ACK
-            // Serial.print(F(": "));
-            // for (uint8_t i = 0; i < radio.getDynamicPayloadSize(); i++)
-            // {
-            //     Serial.print(recv_buffer[i], HEX);
-            //     Serial.print(" ");
-            // }
-            // Serial.println();
             return bytes;
         }
         else
@@ -138,6 +123,21 @@ size_t rf24_send(uint8_t *send_buffer, int send_len, uint8_t *recv_buffer)
     {
         Serial.println(F("Transmission failed or timed out")); // payload was not delivered
         return 0;
+    }
+}
+void change_address_send(uint8_t *address, uint8_t *send_buffer, int send_len, uint8_t *recv_buffer)
+{
+    // 打印address
+    radio.openWritingPipe(address); // always uses pipe 0
+    auto recv_len = rf24_send(send_buffer, send_len, recv_buffer);
+    if (recv_len > 0)
+    {
+        // Serial.print(F("Received "));
+        // for (int i = 0; i < recv_len; i++)
+        // {
+        //   Serial.print(dataToSend[i], HEX);
+        //   Serial.print(" ");
+        // }
     }
 }
 void rf24_send_only(uint8_t *send_buffer, int send_len)
@@ -174,7 +174,6 @@ size_t rf24_recv(uint8_t *recv_buffer, uint8_t *send_buffer, uint8_t send_len)
     }
     return 0;
 }
-
 
 size_t rf24_recv_only(uint8_t *recv_buffer)
 {
