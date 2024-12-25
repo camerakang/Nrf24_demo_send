@@ -45,6 +45,7 @@ void rf24_init_send()
     radio.openReadingPipe(1, address[0]); // using pipe 1
 
     radio.stopListening(); // this also discards any unused ACK payloads
+    radio.setRetries(0, 0);
     // For debugging info
     // printf_begin(); // needed only once for printing details
     radio.printDetails(); // (smaller) function that prints raw register values
@@ -93,16 +94,16 @@ size_t rf24_send(uint8_t *send_buffer, int send_len, uint8_t *recv_buffer)
 {
     radio.setAutoAck(true);
     unsigned long start_timer = micros(); // start the timer
-    Serial.print(F("Sending data: "));
-    for (size_t i = 0; i < send_len; i++)
-    {
-        Serial.print(send_buffer[i], HEX);
-        Serial.print(" ");
-    }
-    Serial.println();
+    // Serial.print(F("Sending data: "));
+    // for (size_t i = 0; i < send_len; i++)
+    // {
+    //     Serial.print(send_buffer[i], HEX);
+    //     Serial.print(" ");
+    // }
+    // Serial.println();
 
-    bool report = radio.writeFast(send_buffer, send_len); // transmit & save the report
-    unsigned long end_timer = micros();                   // end the timer
+    bool report = radio.write(send_buffer, send_len); // transmit & save the report
+    unsigned long end_timer = micros();               // end the timer
 
     if (report)
     {
@@ -125,20 +126,22 @@ size_t rf24_send(uint8_t *send_buffer, int send_len, uint8_t *recv_buffer)
         return 0;
     }
 }
-void change_address_send(uint8_t *address, uint8_t *send_buffer, int send_len, uint8_t *recv_buffer)
+size_t change_address_send(uint8_t *address, uint8_t *send_buffer, int send_len, uint8_t *recv_buffer)
 {
     // 打印address
     radio.openWritingPipe(address); // always uses pipe 0
     auto recv_len = rf24_send(send_buffer, send_len, recv_buffer);
     if (recv_len > 0)
     {
-        // Serial.print(F("Received "));
-        // for (int i = 0; i < recv_len; i++)
-        // {
-        //   Serial.print(dataToSend[i], HEX);
-        //   Serial.print(" ");
-        // }
+        Serial.print(F("Received "));
+        for (int i = 0; i < recv_len; i++)
+        {
+            Serial.print(recv_buffer[i], HEX);
+            Serial.print(" ");
+        }
+        Serial.println();
     }
+    return recv_len;
 }
 void rf24_send_only(uint8_t *send_buffer, int send_len)
 {

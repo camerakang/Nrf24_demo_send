@@ -33,20 +33,29 @@ void setup()
   //     NULL            // 任务句柄
   // );
 }
+uint8_t myData[5] = {1, 2, 3, 4, 5};
+
 void loop()
 {
   if (send_flag)
   {
     send_flag = false;
     auto frame{sprotocol_send->make_packer(1, 32)};
+
+    // 获取当前时间戳
+    unsigned long timestamp = millis();
+
+    // 先将时间戳打包
+    frame.push_back((uint8_t *)&timestamp, sizeof(timestamp));
+    // 再打包原始数据
     frame.push_back(send_buffer, send_len).end_pack();
 
+    // auto recv_len = rf24_send(frame().data(), frame().size(), recv_buffer);
     // auto recv_len = rf24_send(frame().data(), frame().size(), recv_buffer);
     change_address_send(send_address[0], frame().data(), frame().size(), recv_buffer);
     change_address_send(send_address[1], frame().data(), frame().size(), recv_buffer);
     change_address_send(send_address[2], frame().data(), frame().size(), recv_buffer);
     change_address_send(send_address[3], frame().data(), frame().size(), recv_buffer);
-    delay(100);
   }
 
   delay(1); // 为了使串行监视器的输出更易读，每秒传输一次
